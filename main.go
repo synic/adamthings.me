@@ -11,6 +11,8 @@ import (
 	"github.com/synic/blog/internal/controller"
 	"github.com/synic/blog/internal/middleware"
 	"github.com/synic/blog/internal/model"
+	"github.com/synic/blog/internal/repo"
+	"github.com/synic/blog/internal/service"
 	"github.com/synic/blog/internal/store"
 	"github.com/synic/blog/internal/view"
 )
@@ -22,7 +24,7 @@ func main() {
 	ctx := context.Background()
 	assets := internal.MustSub(embeddedAssets, "assets")
 
-	repo, res, err := store.NewArticleRepositoryFromFS(
+	repo, res, err := repo.NewArticleRepositoryFromFS(
 		internal.MustSub(assets, "articles"),
 		internal.Debug,
 	)
@@ -30,6 +32,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	queries, err := store.Init("sqlite.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	service := service.NewArticleService(queries, repo)
 
 	log.Println(res.String())
 
@@ -63,7 +72,7 @@ func main() {
 		},
 	}
 
-	internal.RegisterRoutes(mux, assets, controller.NewArticleController(repo))
+	internal.RegisterRoutes(mux, assets, controller.NewArticleController(service))
 
 	log.Printf("🚀 Serving on %s...", server.Addr)
 	if err = server.ListenAndServe(); err != nil {

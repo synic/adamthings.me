@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/synic/blog/internal/model"
-	"github.com/synic/blog/internal/store"
+	"github.com/synic/blog/internal/service"
 	"github.com/synic/blog/internal/view"
 )
 
@@ -16,7 +16,7 @@ type articleControllerConfig struct {
 }
 
 type ArticleController struct {
-	repo *store.ArticleRepository
+	service *service.ArticleService
 	articleControllerConfig
 }
 
@@ -35,7 +35,7 @@ func WithPagination(perPage, maxPerPage int) func(*articleControllerConfig) {
 }
 
 func NewArticleController(
-	repo *store.ArticleRepository,
+	service *service.ArticleService,
 	options ...func(*articleControllerConfig),
 ) ArticleController {
 	conf := defaultArticleControllerConfig()
@@ -44,7 +44,7 @@ func NewArticleController(
 		option(&conf)
 	}
 
-	return ArticleController{repo: repo, articleControllerConfig: conf}
+	return ArticleController{service: service, articleControllerConfig: conf}
 }
 
 func (h ArticleController) Index(w http.ResponseWriter, r *http.Request) {
@@ -60,11 +60,11 @@ func (h ArticleController) Index(w http.ResponseWriter, r *http.Request) {
 	tag := r.URL.Query().Get("tag")
 
 	if tag != "" {
-		articles, err = h.repo.FindByTag(r.Context(), tag)
+		articles, err = h.service.FindByTag(r.Context(), tag)
 	} else if search != "" {
-		articles, err = h.repo.Search(r.Context(), search)
+		articles, err = h.service.Search(r.Context(), search)
 	} else {
-		articles, err = h.repo.FindAll(r.Context())
+		articles, err = h.service.FindAll(r.Context())
 	}
 
 	if err != nil {
@@ -77,10 +77,10 @@ func (h ArticleController) Index(w http.ResponseWriter, r *http.Request) {
 
 func (h ArticleController) Article(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
-	article, err := h.repo.FindOneBySlug(r.Context(), slug)
+	article, err := h.service.FindOneBySlug(r.Context(), slug)
 
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		if errors.Is(err, service.ErrNotFound) {
 			err = nil
 		}
 		view.Error(w, r, err, 404, "Not Found", "Sorry, that article could not be found.")
@@ -133,6 +133,6 @@ func (h ArticleController) renderAndPageArticles(
 }
 
 func (h ArticleController) Archive(w http.ResponseWriter, r *http.Request) {
-	articles, _ := h.repo.FindAll(r.Context())
-	view.Render(w, r, view.ArchiveView(len(articles), h.repo.TagInfo(r.Context())))
+	articles, _ := h.service.FindAll(r.Context())
+	view.Render(w, r, view.ArchiveView(len(articles), h.service.TagInfo(r.Context())))
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 
-	"github.com/synic/blog/internal/converter"
+	"github.com/synic/blog/internal/store/converter"
 )
 
 var (
@@ -252,6 +252,28 @@ func Clean() error {
 
 func Container() error {
 	return sh.RunV("docker", "build", "-t", "blog", ".")
+}
+
+func migrationEnv() map[string]string {
+	return map[string]string{
+		"GOOSE_MIGRATION_DIR": "internal/store/migrations",
+		"GOOSE_DRIVER":        "sqlite3",
+		"GOOSE_DBSTRING":      "db.sqlite",
+	}
+}
+
+type Migrations mg.Namespace
+
+func (Migrations) Up() error {
+	return sh.RunWithV(migrationEnv(), "goose", "up")
+}
+
+func (Migrations) Down() error {
+	return sh.RunWithV(migrationEnv(), "goose", "down")
+}
+
+func (Migrations) Create(name string) error {
+	return sh.RunWithV(migrationEnv(), "goose", "create", name, "sql")
 }
 
 func lastModTime(paths ...string) (*time.Time, error) {
